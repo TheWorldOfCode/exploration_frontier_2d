@@ -1,5 +1,5 @@
 <launch>
-  <arg name="map"  default="$(find exploration_frontier_2d)/launch/includes/test_map.yaml"/>
+  <arg name="map"  default="$(find exploration_frontier_2d)/launch/includes/test_map2.yaml"/>
 
   <node pkg="tf" type="static_transform_publisher" name="tf" args="0 0 0 0 0 0 1 map 10"></node> 
   <node pkg="map_server" type="map_server" name="map_server" args="$(arg map)"></node> 

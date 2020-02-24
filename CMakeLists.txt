@@ -3,6 +3,7 @@ project(exploration_frontier_2d)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 ## Find catkin macros and libraries
@@ -123,6 +124,8 @@ include_directories(
  ${catkin_INCLUDE_DIRS}
 )
 
+include_directories(includes)
+
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/exploration_frontier_2d.cpp
@@ -208,5 +211,5 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(exploration src/main.cpp src/frontier.cpp src/map.cpp)
+add_executable(exploration src/main.cpp src/frontier.cpp src/map.cpp src/vec2.cpp src/sensor.cpp)
 target_link_libraries(exploration ${catkin_LIBRARIES})

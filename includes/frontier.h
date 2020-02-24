@@ -8,9 +8,19 @@
 // MY
 #include "../includes/global_definition.h" 
 #include "../includes/map.h" 
+#include "../includes/vec2.h" 
 
 // CPP STANDARD
 #include <vector>
+
+class MergeGroup 
+{
+  public:
+    std::vector<int> list;
+    void insert(int x);
+    int at(size_t index) const;
+    size_t size() const;
+};
 
 class Frontier 
 {
@@ -20,15 +30,38 @@ class Frontier
      * Name: search                                                  
      * Description:  Locate frontier cell in the map
      * Parameters: 
-     *                   nav_msgs::OccupancyGrid map - The Current map
-     * Return:  
+     *            map - The Current map
+     * Return: Number of Frontier cells
      * Throws:  
      * Errors: NO 
      ****************************************************/
-    void search(const Map & map);
+    size_t search(const Map & map);
+
+    /****************************************************
+     * Name: clustering                                                  
+     * Description: Cluster the frontier cells
+     * Parameters: 
+     *            minimum_size - minimum threshold of number of cells in a cluster
+     * Return: Number of cluster created
+     * Throws: 
+     * Errors: Not merging all adjacent clusters together
+     ****************************************************/
+    size_t clustering(size_t minimum_size = 5);
+
+    /****************************************************
+     * Name: calcCenter                                                  
+     * Description: Calculate the center of the clusters
+     * Parameters: 
+*                   const Map & map - TODO
+     * Return: The number of centers
+     * Throws: 
+     * Errors: 
+     ****************************************************/
+    size_t calcCenter(const Map & map);
+
+
     ~Frontier(); 
 
-#if DEBUG == 1
     /****************************************************
      * Name: getExploredArea                                                  
      * Description: Returns the Grid cells that are explored 
@@ -37,7 +70,7 @@ class Frontier
      * Throws:  
      * Errors: 
      ****************************************************/
-    nav_msgs::GridCells getExploredArea();
+    nav_msgs::GridCells getExploredArea(const Map & map);
 
     /****************************************************
      * Name: getFrontierCells                                                  
@@ -47,19 +80,56 @@ class Frontier
      * Throws:  
      * Errors:  
      ****************************************************/
-    nav_msgs::GridCells getFrontierCells();
-#endif
+    nav_msgs::GridCells getFrontierCells() const;
+
+
+    /****************************************************
+     * Name: getCluster                                                  
+     * Description: Convert a cluster into a gridcells
+     * Parameters: 
+*                   map - TODO
+*                   cluster - TODO
+     * Return: Gridcells in the world coordinates
+     * Throws: 
+     * Errors: 
+     ****************************************************/
+    nav_msgs::GridCells getCluster(const Map & map, const size_t cluster);
+
+    /****************************************************
+     * Name: getClusterCenterGridCells
+     * Description: Get the cluster centers in a gridcell
+     * Parameters: 
+     * Return:  Returns a gridcell with the cluster centers
+     * Throws: 
+     * Errors:
+     ****************************************************/
+    nav_msgs::GridCells getClusterCenterGridCells();
+
+    /****************************************************
+     * Name: getClusterCenter(                                                  
+     * Description: Return a list of cluster center in map coordinate system
+     * Parameters: 
+     * Return: Return a list of cluster centers
+     * Throws: 
+     * Errors:  
+     ****************************************************/
+    std::vector<vec2> getClusterCenter();
+
   private:
 
-#if DEBUG == 1
+    bool g_debug;
     nav_msgs::GridCells explored_area;
     nav_msgs::GridCells frontier_cells;
-#endif
+    nav_msgs::GridCells frontier_cluster;
+    nav_msgs::GridCells frontier_cluster_centers;
 
     int8_t unknown_marker;
     int8_t occupied_above;
 
-    std::vector<geometry_msgs::Point> vec_frontier_cells;
+    std::vector<vec2> vec_frontier_cells;
+    std::vector< std::vector<vec2> > clustered_frontier_cells;
+    std::vector<geometry_msgs::Point> center;
+    std::vector<vec2> vec_center;
 
     /****************************************************
      * Name: isFree                                                  
@@ -85,7 +155,7 @@ class Frontier
 
     /****************************************************
      * Name: isUnknown                                                  
-     * Description: Chech if a cell is unknown (-1) 
+     * Description: Check if a cell is unknown
      * Parameters: 
      *                   int8_t map - Map cell
      * Return:  True if cell is unknown       
@@ -93,6 +163,45 @@ class Frontier
      * Errors:
      ****************************************************/
     bool isUnknown(int8_t);
+
+
+    /****************************************************
+     * Name: createCluster                                                  
+     * Description: Create a new cluster
+     * Parameters: 
+     *                   geometry_msgs::Point p - The starting point for the cluster
+     * Return: 
+     * Throws: 
+     * Errors: 
+     ****************************************************/
+    void inline createCluster(const vec2 p);
+
+
+    /****************************************************
+     * Name: mergeCluster                                                  
+     * Description: Merging cluster together 
+     * Parameters: 
+     *                   std::vector<MergeGroup> & merge_info - TODO
+     *                   std::vector<size_t> & base - TODO
+     *                   size_t & current - TODO
+     * Return:
+     * Throws: 
+     * Errors:
+     ****************************************************/
+    void mergeCluster(std::vector<MergeGroup> & merge_info, std::vector<size_t> & base, size_t current);
+
+
+    /****************************************************
+     * Name: mergeCluster                                                  
+     * Description: Merge two cluster together, clears the cluster indexed by end
+     * Parameters: 
+     *                   size_t base - TODO
+     *                   size_t end - TODO
+     * Return: 
+     * Throws: 
+     * Errors: 
+     ****************************************************/
+    void mergeCluster(size_t base, size_t end);
 };
 
 #endif

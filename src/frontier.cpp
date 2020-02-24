@@ -1,72 +1,124 @@
 
 #include "../includes/frontier.h"
+#include <exception> 
+#include <algorithm>
+
 #include "geometry_msgs/Pose.h" 
 #include "ros/ros.h" 
 
+void MergeGroup::insert(int x) 
+{
+  bool flag = true;
+  for(size_t i = 0; i < list.size(); i++ ) {
+
+    if(list[i] == x)
+    {
+      flag = false;
+      break;
+    } 
+
+  } 
+
+  if(flag) { 
+    list.push_back(x); 
+  }
+}  
+
+int MergeGroup::at(size_t index) const
+{
+  return list[index];
+}  
+
+size_t MergeGroup::size() const
+{
+  return list.size(); 
+}  
+
 Frontier::Frontier(int8_t unknown_marker, int8_t occupied_above) : unknown_marker(unknown_marker), occupied_above(occupied_above)  
 /*************************************************
- * See speficiation in the header 
- *************************************************/
+* See speficiation in the header 
+*************************************************/
 {
-#if DEBUG == 1
-  explored_area.header.frame_id = "map";
-  explored_area.header.seq = -1;
+  g_debug = true;
+  ROS_INFO("g_debug %s", g_debug ? "true" : "false"   );
 
-  frontier_cells.header.frame_id = "map"; 
-  frontier_cells.header.seq = -1;
-#endif
+  explored_area.header.frame_id       = "map";
+  explored_area.header.seq            = -1;
+
+  frontier_cells.header.frame_id      = "map";
+  frontier_cells.header.seq           = -1;
+
+  frontier_cluster.header.frame_id    = "map";
+  frontier_cluster.header.seq = -1;
+
+  frontier_cluster_centers.header.frame_id    = "map";
+  frontier_cluster_centers.header.seq = -1;
 }
 
 
-void Frontier::search(const Map & map)
-/*************************************************
- * See speficiation in the header 
- *************************************************/
+size_t Frontier::search(const Map & map)
+  /*************************************************
+   * See speficiation in the header 
+   *************************************************/
 {
+  vec_frontier_cells.clear(); 
+
   const uint32_t width    = map.map.info.width;
   const uint32_t height   = map.map.info.height;
 
-#if DEBUG == 1
-  explored_area.cell_width  = map.map.info.resolution;
-  explored_area.cell_height = map.map.info.resolution;
-
-  frontier_cells.cell_width  = map.map.info.resolution;
-  frontier_cells.cell_height = map.map.info.resolution;
-
-  std::vector<geometry_msgs::Point> free_cells;
-#endif
-
   std::vector<geometry_msgs::Point> l_frontier_cells;
-       
+
+  // if(g_debug) { 
+  frontier_cells.cell_width            = map.map.info.resolution;
+  frontier_cells.cell_height           = map.map.info.resolution;
+
+  frontier_cluster_centers.cell_height = map.map.info.resolution;
+  frontier_cluster_centers.cell_width  = map.map.info.resolution;
+
+  // }
+
   int x = 0, x_offset = 0,y_offset = 0, z = 0;
+  geometry_msgs::Point cell_pos;
+
   while(y_offset < height) 
   { 
 
     int8_t current_cell = map.map.data[x]; 
+
+    //    if(g_debug) 
     geometry_msgs::Point cell_pos = map.translateCellInToPosition((x - (width * x_offset)), y_offset );
 
-#if DEBUG == 1
+
+    /***********************************************
+     * Detect if cell is a frontier cell           *
+     ***********************************************/
     if(isFree(current_cell))
     {
-
-      free_cells.push_back(cell_pos); 
-    }  
-#endif
-
-/***********************************************
- * Detect if cell is a frontier cell           *
- ***********************************************/
-    if(isFree(current_cell))
-    {
-      ROS_INFO("Data %i ", current_cell); 
       if(isUnknown(map.map.data[x - 1]) ) 
+      {
+        vec_frontier_cells.push_back(vec2(x - (width * x_offset), y_offset ));
+
+        //   if(g_debug) 
         l_frontier_cells.push_back(cell_pos);
+      } 
       else if (isUnknown(map.map.data[x + 1]))
+      {
+        vec_frontier_cells.push_back(vec2(x - (width * x_offset), y_offset ));
+        //    if(g_debug) 
         l_frontier_cells.push_back(cell_pos);
+      } 
       else if (isUnknown(map.map.data[x - width])) 
+      {
+        vec_frontier_cells.push_back(vec2(x - (width * x_offset), y_offset ));
+        //     if(g_debug) 
         l_frontier_cells.push_back(cell_pos);
+      } 
       else if (isUnknown(map.map.data[x + width])) 
+      {
+        vec_frontier_cells.push_back(vec2(x - (width * x_offset), y_offset ));
+        //      if(g_debug) 
         l_frontier_cells.push_back(cell_pos);
+      } 
     }  
 
     /***********************************************
@@ -80,14 +132,126 @@ void Frontier::search(const Map & map)
     } 
   }
 
-#if DEBUG == 1
-  explored_area.cells = free_cells;
-  explored_area.header.seq++;
-
+  //  if(g_debug) { 
   frontier_cells.cells = l_frontier_cells;
   frontier_cells.header.seq++;
-#endif
+  // }
 
+  return vec_frontier_cells.size();
+
+}
+
+size_t Frontier::clustering(size_t minimum_size)
+  /*************************************************
+   * See speficiation in the header 
+   *************************************************/
+{
+  if(vec_frontier_cells.size() == 0)
+    throw std::exception(); 
+
+  clustered_frontier_cells.clear(); 
+
+  std::vector<MergeGroup> merge; 
+  for(size_t j = 0; j < vec_frontier_cells.size(); j++ )
+  {
+    const vec2 p = vec_frontier_cells[j];
+
+    if(clustered_frontier_cells.size() == 0)
+    { 
+      merge.resize(merge.size() + 1); 
+      createCluster(p);  
+    }
+    else
+    {
+      std::vector<int> fit;
+
+      for(size_t i = 0; i < clustered_frontier_cells.size(); i++  )
+      {
+        const vec2 start = clustered_frontier_cells[i].front(); 
+        const vec2 end = clustered_frontier_cells[i].back(); 
+
+        const vec2 p_start = p - start;
+        const vec2 p_end = p - end;
+        if(p_start.squaredLength() < 5 && p_start.getX()  < 2 && p_start.getY() <2 ) 
+        {
+          fit.push_back(i); 
+          clustered_frontier_cells[i].push_back(p); 
+        } 
+        else if(p_end.squaredLength() < 5 && p_end.getX() < 2 && p_end.getY() < 2  )
+        {
+          fit.push_back(i); 
+          clustered_frontier_cells[i].push_back(p); 
+        } 
+      }
+
+      if(fit.size() == 0 ) 
+      { 
+        merge.resize(merge.size() + 1); 
+        createCluster(p); 
+      }
+      else if (fit.size() > 1 ) 
+      {
+
+        for(size_t k = 1 ; k < fit.size() ; k++  )
+        { 
+          merge[fit[0]].insert(fit[k]); 
+          merge[fit[k]].insert(fit[0]);
+        }
+
+      } 
+    } 
+  }
+
+  // Merging 
+  for(size_t i = 0; i < merge.size(); i++ )
+  { 
+    std::vector<size_t> base;
+    mergeCluster(merge,base,i);
+   }
+
+  // Cleanup
+  for(size_t i = 0; i < clustered_frontier_cells.size(); i++) 
+  {
+    if(clustered_frontier_cells[i].size() < minimum_size ) 
+    {
+      clustered_frontier_cells.erase(clustered_frontier_cells.begin() + i); 
+      i--;
+    } 
+  
+  } 
+
+  // Remove duplicates
+
+  for(size_t i = 0; i < clustered_frontier_cells.size(); i++ ) 
+    ROS_INFO("Cluster %i Number of cells %i", (int)i, (int) clustered_frontier_cells[i].size() ) ;
+
+
+  return clustered_frontier_cells.size(); 
+}
+
+size_t Frontier::calcCenter(const Map &  map)
+/*************************************************
+ * See speficiation in the header 
+ *************************************************/
+{
+  center.clear();
+
+  for( std::vector<vec2> element : clustered_frontier_cells) 
+  {
+    vec2 average(0,0) ;
+    double size = element.size(); 
+
+    for( const vec2 vec : element) 
+    {
+      average = average + vec;
+    }
+
+    vec_center.push_back(vec2((int) (average.getX() / size) , (int) ( average.getY() / size)) );
+    center.push_back(map.translateCellInToPosition(average.getX() / size, average.getY() / size)) ;
+  }
+
+
+  return center.size();
 }
 
 
@@ -100,23 +264,80 @@ Frontier::~Frontier()
 }
 
 
-#if DEBUG == 1
-nav_msgs::GridCells Frontier::getExploredArea( )
+nav_msgs::GridCells Frontier::getExploredArea( const Map & map ) 
   /*************************************************
    * See speficiation in the header 
    *************************************************/
 {
+  std::vector<geometry_msgs::Point> p;
+
+  if(clustered_frontier_cells.size() > 0 ) 
+  {
+    for(size_t i = 0; i < clustered_frontier_cells[2].size();i++ ) 
+      p.push_back(map.translateCellInToPosition(clustered_frontier_cells[2][i].getX(), clustered_frontier_cells[2][i].getY()) );
+
+    explored_area.cell_height = map.map.info.resolution;
+    explored_area.cell_width = map.map.info.resolution;
+    explored_area.header.seq++;
+  } 
+
+  explored_area.cells  = p;
   return explored_area;
 }
 
-nav_msgs::GridCells Frontier::getFrontierCells( )
+nav_msgs::GridCells Frontier::getFrontierCells( ) const
+/*************************************************
+ * See speficiation in the header 
+ *************************************************/
+{
+  return frontier_cells;
+}
+
+
+nav_msgs::GridCells Frontier::getCluster(const Map & map, const size_t cluster)
   /*************************************************
    * See speficiation in the header 
    *************************************************/
 {
-  return frontier_cells;
+  std::vector<geometry_msgs::Point> p;
+
+  if(clustered_frontier_cells.size() > 0  && cluster < clustered_frontier_cells.size() ) 
+  {
+    for(size_t i = 0; i < clustered_frontier_cells[cluster].size();i++ ) 
+      p.push_back(map.translateCellInToPosition(clustered_frontier_cells[cluster][i].getX(), clustered_frontier_cells[cluster][i].getY()) );
+
+    frontier_cluster.cell_height = map.map.info.resolution;
+    frontier_cluster.cell_width = map.map.info.resolution;
+    frontier_cluster.header.seq++;
+  } 
+
+  frontier_cluster.cells  = p;
+  return frontier_cluster;
 }
-#endif 
+
+
+nav_msgs::GridCells Frontier::getClusterCenterGridCells()
+/*************************************************
+ * See speficiation in the header 
+ *************************************************/
+{
+  frontier_cluster_centers.cells = center;
+  frontier_cluster_centers.header.seq++;
+
+  return frontier_cluster_centers;
+ 
+}
+
+std::vector<vec2> Frontier::getClusterCenter()
+/*************************************************
+ * See speficiation in the header 
+ *************************************************/
+{
+  return vec_center;
+}
+
+// Private functions 
+
 bool Frontier::isFree(int8_t cell)
   /*************************************************
    * See speficiation in the header 
@@ -141,3 +362,146 @@ bool Frontier::isUnknown(int8_t cell)
   return cell == -1 ? true : false;
 }
 
+void inline Frontier::createCluster(const vec2 p)
+  /*************************************************
+   * See speficiation in the header 
+   *************************************************/
+{
+  std::vector<vec2> tmp;
+  tmp.push_back(p); 
+  clustered_frontier_cells.push_back(tmp); 
+}  
+
+void Frontier::mergeCluster(std::vector<MergeGroup> & merge_info, std::vector<size_t> & base, size_t current)
+  /*************************************************
+   * See speficiation in the header 
+   *************************************************/
+{
+  if(clustered_frontier_cells[current].size() != 0 ) 
+  {
+    if(merge_info[current].size() > 0 ) 
+    {
+      std::vector<size_t> new_base = base;
+      new_base.push_back(current); 
+      for(int i = 0; i < merge_info[current].size(); i++) 
+      {
+        if(std::find(base.begin(), base.end(), merge_info[current].at(i)) == base.end())
+          mergeCluster(merge_info, new_base, merge_info[current].at(i)); 
+      } 
+
+      if(base.size() != 0 ) 
+        mergeCluster(base.back(), current); 
+    }
+  } 
+}
+
+
+void Frontier::mergeCluster(size_t base, size_t end)
+  /*************************************************
+   * See speficiation in the header 
+   *************************************************/
+{
+  for(int i = 0; i < clustered_frontier_cells[end].size(); i++ ) 
+    clustered_frontier_cells[base].push_back(clustered_frontier_cells[end][i]); 
+
+  clustered_frontier_cells[end].clear(); 
+}
+
+
+/*
+   const double distance_1 = (base_front - end_back).squaredLength();
+   const double distance_2 = (base_back  - end_back).squaredLength();
+   const double distance_3 = (base_front - end_front).squaredLength();
+   const double distance_4 = (base_back  - end_front).squaredLength();
+
+   double distance_tmp;
+
+   ROS_INFO("%f , %f", distance_1 + distance_2, distance_3 + distance_4 );
+   if((distance_1 + distance_2)  < (distance_3 + distance_4)) {  
+   if(distance_1 < distance_2)
+   {
+   for(size_t i = 1; i < clustered_frontier_cells[base].size()/2 + 1; i++ ) 
+   {
+   distance_tmp = (end_back - clustered_frontier_cells[base][i]).squaredLength();   
+
+   if(distance_tmp > distance_1)
+   break; 
+
+   vec2 tmp = end_back - clustered_frontier_cells[base][i]; 
+
+   if(tmp.squaredLength() < 5  && tmp.getX() < 2 && tmp.getY() < 2) 
+   {
+   flag = true;
+   break;
+   } 
+   } 
+   }  
+   else 
+   {
+   for(size_t i = clustered_frontier_cells[base].size(); i > clustered_frontier_cells[base].size()/2 - 1; i-- ) 
+   {
+   distance_tmp = (end_back - clustered_frontier_cells[base][i]).squaredLength();   
+
+   if(distance_tmp > distance_2)
+   break; 
+
+   vec2 tmp = end_back - clustered_frontier_cells[base][i]; 
+
+   if(tmp.squaredLength() < 5  && tmp.getX() < 2 && tmp.getY() < 2) 
+   {
+   flag = true;
+   break;
+   } 
+
+   } 
+   } 
+   } 
+   else 
+   {
+   if(distance_1 < distance_2)
+   {
+   for(size_t i = 1; i < clustered_frontier_cells[base].size()/2 + 1; i++ ) 
+   {
+   distance_tmp = (end_back - clustered_frontier_cells[base][i]).squaredLength();   
+
+   if(distance_tmp > distance_1)
+   break; 
+
+   vec2 tmp = end_back - clustered_frontier_cells[base][i]; 
+
+   if(tmp.squaredLength() < 5  && tmp.getX() < 2 && tmp.getY() < 2) 
+   {
+   flag = true;
+   break;
+   } 
+   } 
+   }  
+   else 
+   {
+   for(size_t i = clustered_frontier_cells[base].size(); i > clustered_frontier_cells[base].size()/2 - 1; i-- ) 
+{
+  distance_tmp = (end_back - clustered_frontier_cells[base][i]).squaredLength();   
+
+  if(distance_tmp > distance_1)
+    break; 
+
+  vec2 tmp = end_back - clustered_frontier_cells[base][i]; 
+
+  if(tmp.squaredLength() < 5  && tmp.getX() < 2 && tmp.getY() < 2) 
+  {
+    flag = true;
+    break;
+  } 
+
+} 
+} 
+} 
+
+if(!flag)
+  return; 
+  else 
+{
+  for(int i = 0; i < clustered_frontier_cells[end].size(); i++ ) 
+    clustered_frontier_cells[base].push_back(clustered_frontier_cells[end][i]); 
+} 
+*/
