@@ -4,10 +4,12 @@ This package implements a cost-utility approach for frontier exploration. The pa
 
 ## Approach 
 This package uses a simple state machine which only contains two states. 
-State | Description
-------|------------
+
+
+State    | Description
+------------ | -------------
 frontier | Find new position to move to
-Move  | Moving the robot
+Move     | Moving the robot
 
 
 
@@ -18,8 +20,11 @@ Then for each center a theoretical scan by center is made with the help of map, 
 
 
 Now the cost - utility function can be used, the function is defines as 
-\[E(q,p,s) =U(s) - C(q,p) \]
-Where $U$ is the utility function which take the histogram for the optimal direction $s$, and $C$ is the cost function which take the robot position $q$ and the target position $p$. 
+
+
+![equation](http://www.sciweavers.org/tex2img.php?eq=E%28q%2Cp%2Cs%29%20%3D%20U%28s%29%20-%20C%28q%2Cp%29&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
+
+Where U is the utility function which take the histogram for the optimal direction s, and C is the cost function which take the robot position q and the target position p. 
 
 The cluster center that will be moved to will be maximise this function.
 
