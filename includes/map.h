@@ -4,6 +4,8 @@
 #include "nav_msgs/OccupancyGrid.h" 
 #include "geometry_msgs/Point.h" 
 
+#include "../includes/vec2.h" 
+
 struct Map
 { 
   Map(); 
@@ -22,6 +24,21 @@ struct Map
    * Errors: 
    ****************************************************/
   geometry_msgs::Point translateCellInToPosition(int x, int y) const;
+  /****************************************************
+   * Parameters:
+   *                v - 2D vector
+   ****************************************************/
+  geometry_msgs::Point translateCellInToPosition(const vec2 v) const;
+  /****************************************************
+   * Name: translateCellInToPositionVec                                                  
+   * Description: move the position from map coordinate to the world
+   * Parameters: 
+*                   const vec2 v - TODO
+   * Return: A vector in world corrdinate
+   * Throws:  Which exception does it throw ?
+   * Errors:  Current errors
+   ****************************************************/
+  vec2 translateCellInToPositionVec(const vec2 v) const;
   
   /****************************************************
    * Name: translatePositionInToCell                                                  
@@ -35,6 +52,33 @@ struct Map
    * Errors:  Current errors
    ****************************************************/
   void translatePositionInToCell(const geometry_msgs::Point pos, int & x, int & y) const;
+  void translatePositionInToCell(const vec2 v,  vec2 & o) const;
+
+
+  /****************************************************
+   * Name: getCellData                                                  
+   * Description: Get the cell data for a given index
+   * Parameters: 
+*                   const int index - TODO
+   * Return: cell data
+   * Throws: OutABound
+   * Errors: 
+   ****************************************************/
+  int8_t getCellData(const int index) const;
+  /****************************************************
+   * Overload of: getCellData                                                  
+   * Parameters: 
+*                   const int x - TODO
+*                   const int y - TODO
+   ****************************************************/
+  int8_t getCellData(const int x, const int y) const;
+  /****************************************************
+   * Overload of: getCellData                                                  
+   * Parameters: 
+*                   const vec2 v - TODO
+   ****************************************************/
+  int8_t getCellData(const vec2 v) const;
+  
 
 };
 

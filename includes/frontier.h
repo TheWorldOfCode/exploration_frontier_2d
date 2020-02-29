@@ -63,6 +63,16 @@ class Frontier
     ~Frontier(); 
 
     /****************************************************
+     * Name: getNumberOfCluster                                                  
+     * Description:  Return the number of cluster detected
+     * Parameters: 
+     * Return:  The number of cluster
+     * Throws:  
+     * Errors:  
+     ****************************************************/
+    size_t getNumberOfCluster() const;
+
+    /****************************************************
      * Name: getExploredArea                                                  
      * Description: Returns the Grid cells that are explored 
      * Parameters: 
@@ -113,23 +123,8 @@ class Frontier
      * Throws: 
      * Errors:  
      ****************************************************/
-    std::vector<vec2> getClusterCenter();
-
-  private:
-
-    bool g_debug;
-    nav_msgs::GridCells explored_area;
-    nav_msgs::GridCells frontier_cells;
-    nav_msgs::GridCells frontier_cluster;
-    nav_msgs::GridCells frontier_cluster_centers;
-
-    int8_t unknown_marker;
-    int8_t occupied_above;
-
-    std::vector<vec2> vec_frontier_cells;
-    std::vector< std::vector<vec2> > clustered_frontier_cells;
-    std::vector<geometry_msgs::Point> center;
-    std::vector<vec2> vec_center;
+    std::vector<vec2> getClusterCenter() const;
+    void addClusterCenter(const vec2 center); 
 
     /****************************************************
      * Name: isFree                                                  
@@ -140,7 +135,7 @@ class Frontier
      * Throws:  
      * Errors: 
      ****************************************************/
-    bool isFree(int8_t cell);
+    bool isFree(int8_t cell) const;
 
     /****************************************************
      * Name: isOccupied                                                  
@@ -151,7 +146,7 @@ class Frontier
      * Throws:
      * Errors: 
      ****************************************************/
-    bool isOccupied(int8_t cell);
+    bool isOccupied(int8_t cell) const;
 
     /****************************************************
      * Name: isUnknown                                                  
@@ -162,7 +157,23 @@ class Frontier
      * Throws: 
      * Errors:
      ****************************************************/
-    bool isUnknown(int8_t);
+    bool isUnknown(int8_t) const;
+
+  private:
+
+    bool g_debug;
+    nav_msgs::GridCells explored_area;
+    nav_msgs::GridCells frontier_cells;
+    nav_msgs::GridCells frontier_cluster;
+    nav_msgs::GridCells frontier_cluster_centers;
+    std::vector<geometry_msgs::Point> center; 
+
+    int8_t unknown_marker;
+    int8_t occupied_above;
+
+    std::vector<vec2> vec_frontier_cells; // Contains inclusteres frontier cells
+    std::vector< std::vector<vec2> > clustered_frontier_cells; // Clustered frontier cells
+    std::vector<vec2> vec_center; // Contains the center of the frontier clusteres 
 
 
     /****************************************************

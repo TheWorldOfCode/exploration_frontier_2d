@@ -225,7 +225,6 @@ size_t Frontier::clustering(size_t minimum_size)
   for(size_t i = 0; i < clustered_frontier_cells.size(); i++ ) 
     ROS_INFO("Cluster %i Number of cells %i", (int)i, (int) clustered_frontier_cells[i].size() ) ;
 
-
   return clustered_frontier_cells.size(); 
 }
 
@@ -234,6 +233,7 @@ size_t Frontier::calcCenter(const Map &  map)
  * See speficiation in the header 
  *************************************************/
 {
+  vec_center.clear();
   center.clear();
 
   for( std::vector<vec2> element : clustered_frontier_cells) 
@@ -261,6 +261,14 @@ Frontier::~Frontier()
    *************************************************/
 {
   /* code */
+}
+
+size_t Frontier::getNumberOfCluster() const
+/*************************************************
+ * See speficiation in the header 
+ *************************************************/
+{
+  return clustered_frontier_cells.size(); 
 }
 
 
@@ -328,7 +336,7 @@ nav_msgs::GridCells Frontier::getClusterCenterGridCells()
  
 }
 
-std::vector<vec2> Frontier::getClusterCenter()
+std::vector<vec2> Frontier::getClusterCenter() const
 /*************************************************
  * See speficiation in the header 
  *************************************************/
@@ -336,9 +344,17 @@ std::vector<vec2> Frontier::getClusterCenter()
   return vec_center;
 }
 
+void Frontier::addClusterCenter(const vec2 center)
+/*************************************************
+ * See speficiation in the header 
+ *************************************************/
+{
+  vec_center.push_back(center); 
+}
+
 // Private functions 
 
-bool Frontier::isFree(int8_t cell)
+bool Frontier::isFree(int8_t cell) const
   /*************************************************
    * See speficiation in the header 
    *************************************************/
@@ -346,7 +362,7 @@ bool Frontier::isFree(int8_t cell)
   return cell < occupied_above && cell > -1 ? true : false;
 }
 
-bool Frontier::isOccupied(int8_t cell)
+bool Frontier::isOccupied(int8_t cell) const
   /*************************************************
    * See speficiation in the header 
    *************************************************/
@@ -354,7 +370,7 @@ bool Frontier::isOccupied(int8_t cell)
   return cell > occupied_above ? true : false;
 }
 
-bool Frontier::isUnknown(int8_t cell)
+bool Frontier::isUnknown(int8_t cell) const
   /*************************************************
    * See speficiation in the header 
    *************************************************/

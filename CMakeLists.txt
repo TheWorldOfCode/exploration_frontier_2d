@@ -15,6 +15,10 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
 	message_generation
+  tf
+  actionlib
+  actionlib_msgs
+  move_base_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -211,5 +215,5 @@ include_directories(includes)
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(exploration src/main.cpp src/frontier.cpp src/map.cpp src/vec2.cpp src/sensor.cpp)
+add_executable(exploration src/main.cpp src/frontier.cpp src/map.cpp src/vec2.cpp src/sensor.cpp src/robot.cpp src/exploration.cpp)
 target_link_libraries(exploration ${catkin_LIBRARIES})
