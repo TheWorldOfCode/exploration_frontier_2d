@@ -55,7 +55,6 @@ int main(int argc, char **argv)
   ros::Subscriber sub  = n.subscribe("map", 1000, getMap);
   ros::Subscriber sub2 = n.subscribe("odom", 1000, &Robot::getOdom, robot.get());
 #if DEBUG == 1
-  ros::Publisher free_cells               = n.advertise<nav_msgs::GridCells>("free_cells" , 1000);
   ros::Publisher frontier_cells           = n.advertise<nav_msgs::GridCells>("frontier_cells" , 1000);
   ros::Publisher frontier_cluster_centers = n.advertise<nav_msgs::GridCells>("frontier_cluster_centers" , 1000);
   ros::Publisher frontier_target_center   = n.advertise<nav_msgs::GridCells>("frontier_target_center" , 1000);
