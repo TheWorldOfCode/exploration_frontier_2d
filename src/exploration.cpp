@@ -182,7 +182,7 @@ SensorReading Exploration::findOptimalSensorDirection(const SensorReading & read
 
     // If the index1 presices the already allocated memory
     if(group_indexs.size() == index1 ) 
-      group_indexs.resize(index1); 
+      group_indexs.resize(index1  + 1); 
   }
 
   // The size of the largeste group
