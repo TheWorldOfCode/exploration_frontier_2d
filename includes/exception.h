@@ -2,6 +2,7 @@
 #define MY_EXCEPTION
 
 #include <exception> 
+#include <string> 
 
 struct OutABound : public std::exception 
 {
@@ -25,5 +26,17 @@ struct NoFrontierCluster : public std::exception
   {
     return "No frontier cluster";
   }  
+};
+
+struct ParameterNotInServer 
+{
+  ParameterNotInServer(const std::string m) : _what(m) {}   
+  std::string what() const throw()
+  {
+    return "Can not find parameter " +  _what;
+  }   
+  private:
+  std::string _what;
+
 };
 #endif

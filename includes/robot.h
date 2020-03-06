@@ -6,17 +6,22 @@
 #include <memory>
 
 #include <geometry_msgs/Pose.h> 
+#include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 
-#include <move_base_msgs/MoveBaseAction.h>
-#include <actionlib/client/simple_action_client.h>
+#include "../includes/navigation_base.h" 
+#include "../includes/map.h" 
+#include "../includes/frontier.h" 
+
+
+
 
 
 class Robot
 {
   public:
-    Robot();
+    Robot(boost::shared_ptr<exploration_navigation::NavigationBase> nav);
 
     /****************************************************
      * Name: getLocalization                                                  
@@ -27,6 +32,18 @@ class Robot
      * Errors: 
      ****************************************************/
     vec2 getLocalization() const;
+
+
+    /****************************************************
+     * Name: convVecToPoint                                                  
+     * Description: Convert a 2D vector to a Point
+     * Parameters: 
+*                   const vec2 v - TODO
+     * Return: A Point
+     * Throws: 
+     * Errors: 
+     ****************************************************/
+    geometry_msgs::Point convVecToPoint(const vec2 v) const;
 
     /****************************************************
      * Name: distanceToPosition                                                  
@@ -50,6 +67,17 @@ class Robot
      ****************************************************/
     void getOdom(nav_msgs::Odometry odom);
     
+    /****************************************************
+     * Name: getPlan                                                  
+     * Description: Create and return the plan to move to a goal
+     * Parameters: 
+*                   const vec2 goal - TODO
+*                   const double heading - TODO
+     * Return:  Return a list of poses that gives the path 
+     * Throws:  
+     * Errors:  
+     ****************************************************/
+    std::vector<geometry_msgs::PoseStamped> getPlan(const vec2 goal, const double heading) const;
 
     /****************************************************
      * Name: moveToPosition                                                  
@@ -61,7 +89,7 @@ class Robot
      * Throws: 
      * Errors:
      ****************************************************/
-    geometry_msgs::Pose moveToPosition(const geometry_msgs::Point p, const double heading);
+    geometry_msgs::Pose moveToPosition(const geometry_msgs::Point p, const double heading) const;
 
     /****************************************************
      * Name: move                                                  
@@ -74,12 +102,14 @@ class Robot
      * Throws: 
      * Errors: 
      ****************************************************/
-    move_base_msgs::MoveBaseGoal move(const geometry_msgs::Pose pose);
+     void move(const geometry_msgs::Pose pose, const Map * map, const std::shared_ptr<Frontier> frontier);
 
     ~Robot();  
 
   private:
+    boost::shared_ptr<exploration_navigation::NavigationBase> nav;
     vec2 current_position;
+    geometry_msgs::Pose robot_pose;
     double orientation;
 
 };

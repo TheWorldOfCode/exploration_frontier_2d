@@ -79,6 +79,35 @@ struct Map
    ****************************************************/
   int8_t getCellData(const vec2 v) const;
   
+  /****************************************************
+   * Name: getWidth                                                  
+   * Description: Get the width of the map
+   * Parameters: 
+   * Return: Return the width
+   * Throws: 
+   * Errors: 
+   ****************************************************/
+  uint32_t getWidth() const;
+
+  /****************************************************
+   * Name: getHeight                                                  
+   * Description: Get the height of the map
+   * Parameters: 
+   * Return: Return the height
+   * Throws: 
+   * Errors: 
+   ****************************************************/
+  uint32_t getHeight() const;
+
+  /****************************************************
+   * Name: getResolution                                                  
+   * Description: Get the resolution of the map
+   * Parameters: 
+   * Return: return the resolution
+   * Throws: 
+   * Errors: 
+   ****************************************************/
+  float getResolution() const;
 
 };
 

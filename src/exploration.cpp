@@ -1,14 +1,26 @@
 #include "../includes/exploration.h" 
 #include "../includes/exception.h" 
+#include "../includes/global_definition.h" 
+#include "../includes/math_extern.h" 
+
+#include <ros/ros.h>
 
 #include<limits>
 
-Exploration::Exploration(const std::shared_ptr<Sensor> sensor, const std::shared_ptr<Frontier> frontier, const std::shared_ptr<Robot> robot) : sensor(sensor), frontier(frontier), robot(robot)  
+Exploration::Exploration(const boost::shared_ptr<exploration_sensor_model::SensorModelBase> sensor, const std::shared_ptr<Frontier> frontier, const std::shared_ptr<Robot> robot, const std::shared_ptr<ros::NodeHandle> h) : sensor(sensor), frontier(frontier), robot(robot)  
                                                                                                                                                /*************************************************
                                                                                                                                                 * See speficiation in the header 
                                                                                                                                                 *************************************************/
 {
-  /* code */
+
+  if(!h->getParam("cost_function_modifier", cost_modifier))
+   cost_modifier = 1; 
+
+  if(!h->getParam("utility_function_modifier", utility_modifier ) ) 
+    utility_modifier = 1;
+
+  ROS_INFO("Param cost_function_modifier %f", cost_modifier);
+  ROS_INFO("Param utility_function_modifier %f", utility_modifier);
 }
 
 struct Tabel 
@@ -34,7 +46,7 @@ geometry_msgs::Pose Exploration::explore(const Map & map)
   if(frontiers_size == 0 ) 
     throw NoFrontier(); 
 
-  size_t cluster_number = frontier->clustering(5); 
+  size_t cluster_number = frontier->clustering(exploration::g_minimum_cluster_size); 
 
   if(cluster_number == 0) 
     throw NoFrontierCluster(); 
@@ -44,12 +56,13 @@ geometry_msgs::Pose Exploration::explore(const Map & map)
   std::vector<vec2> cluster_centers = frontier->getClusterCenter(); 
 
   std::vector<Tabel> info; 
+  size_t index = 0;
   for(vec2 center : cluster_centers) 
   {
-    SensorReading reading;
+    exploration_sensor_model::SensorReading reading;
     if(frontier->isUnknown(map.getCellData(center))) 
     {
-      map.translatePositionInToCell(robot->getLocalization(),center ); 
+      center = frontier->findClusterFrontier(index); 
       frontier->addClusterCenter(center); 
     } 
 
@@ -67,17 +80,23 @@ geometry_msgs::Pose Exploration::explore(const Map & map)
 
     Tabel t;
     t.position = center;
-    t.heading = sensor->getForwardDirection(reading); 
-    t.reward = reward(center, reading);
-    t.cost   = cost(map.translateCellInToPositionVec(center));
-    t.total  = -t.cost + t.reward;
+    t.heading  = sensor->getForwardDirection(reading);
+    t.reward   = utility_modifier * reward(center, reading);
+    t.cost     = cost_modifier * cost(map.translateCellInToPositionVec(center), t.heading);
+    if(t.cost == std::numeric_limits<double>::infinity() ) 
+      t.total = - t.cost;
+    else
+      t.total    = - t.cost +  t.reward;
 
     ROS_INFO("Cluster center %s, Reward %f, Cost %f, Total %f", center.print().c_str(), t.reward, t.cost, t.total);
 
     info.push_back(t); 
 
     reading.append(sensor_vising); 
+
+    index++;
   }
+
 
   /* calc next goal */
 
@@ -98,6 +117,11 @@ geometry_msgs::Pose Exploration::explore(const Map & map)
       max_location = element;
     } 
   }
+
+  ROS_WARN("%f", max_location.cost); 
+
+  if(max_location.cost == std::numeric_limits<double>::infinity()) 
+    throw NoFrontier(); 
 
 
   geometry_msgs::Point p = map.translateCellInToPosition(max_location.position);
@@ -124,15 +148,25 @@ std::vector<geometry_msgs::Point> Exploration::getSensorVising() const
   return sensor_vising;
 }
 
-double Exploration::cost(const vec2 center) const
+double Exploration::cost(const vec2 center, const double heading) const
 /*************************************************
  * See speficiation in the header 
  *************************************************/
 {
-  return robot->distanceToPositionSquared(center); 
+  double distance;
+  std::vector<geometry_msgs::PoseStamped> p = robot->getPlan(center, heading); 
+
+  if(p.size() != 0 ) 
+    distance = math_extern::sum<double, geometry_msgs::PoseStamped>(0, p.size(), p, [](geometry_msgs::PoseStamped p) -> double { return p.pose.position.x * p.pose.position.x + p.pose.position.y * p.pose.position.y +  p.pose.position.z * p.pose.position.z; }   );
+  else
+    distance = std::numeric_limits<double>::infinity(); 
+
+  return distance;
+
+  //  return robot->distanceToPositionSquared(center); 
 }
 
-double Exploration::reward(const vec2 position, const SensorReading reading) const
+double Exploration::reward(const vec2 position, const exploration_sensor_model::SensorReading reading) const
 /*************************************************
  * See speficiation in the header 
  *************************************************/
@@ -147,7 +181,7 @@ double Exploration::reward(const vec2 position, const SensorReading reading) con
  * be found be find the largeste group of index*
  * above the mean .                            *
  ***********************************************/
-SensorReading Exploration::findOptimalSensorDirection(const SensorReading & reading) const
+exploration_sensor_model::SensorReading Exploration::findOptimalSensorDirection(const exploration_sensor_model::SensorReading & reading) const
 /*************************************************
  * See speficiation in the header 
  *************************************************/
@@ -156,7 +190,10 @@ SensorReading Exploration::findOptimalSensorDirection(const SensorReading & read
 
   std::vector<size_t> indexs = reading.count_of_angle_resolution.getIndexAbove(mean); 
 
-  std::vector<std::vector<size_t>> group_indexs(10) ;
+  if(mean < 1) 
+    ROS_WARN("The mean of the current reading is below 1 (%f)", mean );
+
+  std::vector<std::vector<size_t>> group_indexs(1);
   size_t index1 = 0;
   size_t max    = 0;
 
@@ -169,8 +206,10 @@ SensorReading Exploration::findOptimalSensorDirection(const SensorReading & read
     } 
     else
     {
-      if(indexs[i + 1] - indexs[i] == 1) 
+      if(indexs[i + 1] - indexs[i] == 1)
+      { 
         group_indexs[index1].push_back(indexs[i]); 
+      }
       else if(group_indexs[index1].size() > 0 )
       {
         // Keep tracked of the largest group.
@@ -182,7 +221,7 @@ SensorReading Exploration::findOptimalSensorDirection(const SensorReading & read
 
     // If the index1 presices the already allocated memory
     if(group_indexs.size() == index1 ) 
-      group_indexs.resize(index1  + 1); 
+      group_indexs.resize(index1 + 1); 
   }
 
   // The size of the largeste group

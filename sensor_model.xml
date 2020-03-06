@@ -1,0 +1,5 @@
+<library path="lib/libsensor_model">
+  <class type="exploration_sensor_model::LIDAR" base_class_type="exploration_sensor_model::SensorModelBase">
+    <description>Sensor model of a LIDAR, so it can be simulated on a map</description> 
+  </class> 
+</library> 

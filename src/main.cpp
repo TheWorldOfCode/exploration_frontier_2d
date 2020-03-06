@@ -3,6 +3,7 @@
 #include "nav_msgs/MapMetaData.h" 
 #include "nav_msgs/GridCells.h" 
 #include <nav_msgs/Odometry.h>
+#include <pluginlib/class_loader.h>
 
 #include "../includes/frontier.h" 
 #include "../includes/map.h" 
@@ -11,9 +12,21 @@
 #include "../includes/robot.h" 
 #include "../includes/exploration.h" 
 #include "../includes/exception.h" 
+#include "../includes/sensor_base.h" 
+#include "../includes/navigation_base.h" 
 
 #include <string>
 #include <memory>
+namespace exploration 
+{ 
+  bool g_debug;
+
+  std::string g_map_frame_id; // The frame id for the map  (used for navigation and gridcells) 
+
+  int g_minimum_cluster_size;
+}
+
+
 Map g_map;
 bool g_map_available = false;
 
@@ -24,8 +37,6 @@ void getMap(const nav_msgs::OccupancyGrid& map)
 {
 
   g_map = Map(map);
-
-  ROS_INFO("%s %i%s%i", "Receive Map, Size", map.info.width, "x", map.info.height  );
   g_map_available = true;
 
 }  
@@ -34,13 +45,6 @@ void getMap(const nav_msgs::OccupancyGrid& map)
 int main(int argc, char **argv) 
 {
 
-  /***********************************************
-   * Setup node                                  *
-   ***********************************************/
-  std::shared_ptr<Frontier> frontier    = std::make_shared<Frontier>(-1 , 25);
-  std::shared_ptr<Sensor> sensor        = std::make_shared<Sensor>(8,270);
-  std::shared_ptr<Robot> robot          = std::make_shared<Robot>() ;
-  std::shared_ptr<Exploration> explorer = std::make_shared<Exploration>(sensor, frontier, robot) ;
 
   // g_debug = true;
   /***********************************************
@@ -51,6 +55,71 @@ int main(int argc, char **argv)
 
   // access point to communications 
   ros::NodeHandle n;
+  // Private namespace
+  std::shared_ptr<ros::NodeHandle> nh = std::make_shared<ros::NodeHandle>("~"); 
+
+ /***********************************************
+  * Setup global variables                      *
+  ***********************************************/ 
+  if(!nh->getParam("debug", exploration::g_debug)) 
+      exploration::g_debug = false;
+
+  if(!nh->getParam("map_frame_id", exploration::g_map_frame_id)) 
+       exploration::g_map_frame_id = "map" ;
+
+  if(!nh->getParam("minimum_cluster_size", exploration::g_minimum_cluster_size) ) 
+    exploration::g_minimum_cluster_size = 5;
+
+  ROS_INFO("Param debug %s", exploration::g_debug ? "true" :  "false");
+  ROS_INFO("Param map_frame_id %s", exploration::g_map_frame_id.c_str());
+  ROS_INFO("Param minimum_cluster_size %i", exploration::g_minimum_cluster_size);
+
+  /***********************************************
+   * Setup node                                  *
+   ***********************************************/
+  pluginlib::ClassLoader<exploration_sensor_model::SensorModelBase> sensor_plug_loader("exploration_frontier_2d", "exploration_sensor_model::SensorModelBase"); 
+  pluginlib::ClassLoader<exploration_navigation::NavigationBase> navigation_plug_loader("exploration_frontier_2d", "exploration_navigation::NavigationBase"); 
+
+
+  // Plug in 
+  boost::shared_ptr<exploration_sensor_model::SensorModelBase> sensor; 
+  boost::shared_ptr<exploration_navigation::NavigationBase> navigation;
+
+  std::shared_ptr<Frontier> frontier;
+  std::shared_ptr<Robot> robot;
+  std::shared_ptr<Exploration> explorer;
+
+  try
+  { 
+    /***********************************************
+     * Creating instance of plugins                *
+     ***********************************************/
+     sensor = sensor_plug_loader.createInstance("exploration_sensor_model::LIDAR"); 
+     navigation = navigation_plug_loader.createInstance("exploration_frontier_2d/exploration_navigation/NavigationMoveBase"); 
+
+    /***********************************************
+     * Initizering                                 *
+     ***********************************************/
+    frontier = std::make_shared<Frontier>(nh);
+    robot    = std::make_shared<Robot>(navigation) ;
+    explorer = std::make_shared<Exploration>(sensor, frontier, robot, nh) ;
+
+    sensor->initialize(nh); 
+    navigation->initialize(nh); 
+  }
+  catch(ParameterNotInServer ex) 
+  {
+    ROS_FATAL("Error while setting up the node: %s", ex.what().c_str() ); 
+    return 1;
+  } 
+  catch(pluginlib::PluginlibException & ex) 
+  {
+    ROS_ERROR("The plugin failed to load for some reason. Error: %s", ex.what());
+    return 1;
+  } 
+  /***********************************************
+   * Creating topics and subscriber              *
+   ***********************************************/
 
   ros::Subscriber sub  = n.subscribe("map", 1000, getMap);
   ros::Subscriber sub2 = n.subscribe("odom", 1000, &Robot::getOdom, robot.get());
@@ -70,22 +139,16 @@ int main(int argc, char **argv)
   }
 
 #endif
-  actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> ac("move_base", true); 
-
-  while(!ac.waitForServer(ros::Duration(5.0) ) )
-  {
-    ROS_INFO("Waiting for the move_base action server to come up" );
-  } 
 
   ros::Rate loop_rate(10); 
 
   nav_msgs::GridCells target; 
   nav_msgs::GridCells explored_area;
 
-  explored_area.header.frame_id = "map";
+  explored_area.header.frame_id = exploration::g_map_frame_id;
   explored_area.header.seq      = -1;
 
-  target.header.frame_id        = "map";
+  target.header.frame_id        = exploration::g_map_frame_id;
   target.header.seq             = -1;
 
 
@@ -114,23 +177,13 @@ int main(int argc, char **argv)
 
           frontier_target_center.publish(target);
 
-          ac.sendGoal(robot->move(goal)); 
-
-          ac.waitForResult(); 
-
-          if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-            ROS_INFO("Reached goal");
-          else
-            ROS_INFO("Didn't reach the goal  ");
-
-          ROS_INFO("Canceling all goals"); 
-          ac.cancelAllGoals(); 
-
+          robot->move(goal, &g_map, frontier);
 
           if(frontier->getNumberOfCluster() == 0 ) 
             state = 2;
           else
             state = 0;
+
           break;
         case 2:
           break;
@@ -154,7 +207,6 @@ int main(int argc, char **argv)
 
 
 #if DEBUG == 1
-
           for(size_t i = 0; i < frontier->getNumberOfCluster() ; i++ )
           {
             if(i > frontier_clusters.size()) 
@@ -163,16 +215,15 @@ int main(int argc, char **argv)
             frontier_clusters[i].publish(frontier->getCluster(g_map, i) );
 
           } 
-
-          frontier_cells.publish(frontier->getFrontierCells()); 
           frontier_cluster_centers.publish(frontier->getClusterCenterGridCells()); 
+#endif
+          frontier_cells.publish(frontier->getFrontierCells()); 
           explored_area.cell_width = g_map.map.info.resolution;
           explored_area.cell_height = g_map.map.info.resolution;
           explored_area.cells = explorer->getSensorVising(); 
 
           explored_area.header.seq++;
           frontier_sensor_range.publish(explored_area); 
-#endif
       }
 
     }  
@@ -187,7 +238,6 @@ int main(int argc, char **argv)
   } 
 
 EXITINGS:
-
   return 0;
 
 } 
