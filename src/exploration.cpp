@@ -222,7 +222,6 @@ exploration_sensor_model::SensorReading Exploration::findOptimalSensorDirection(
     // If the index1 presices the already allocated memory
     if(group_indexs.size() == index1 ) 
       group_indexs.resize(index1 + 1); 
-
   }
 
   // The size of the largeste group
