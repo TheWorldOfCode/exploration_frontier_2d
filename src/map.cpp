@@ -90,3 +90,28 @@ int8_t Map::getCellData(const vec2 v) const
 {
   return getCellData(v.getX(), v.getY());  
 }
+
+uint32_t Map::getWidth() const
+/*************************************************
+ * See speficiation in the header 
+ *************************************************/
+{
+  return map.info.width;
+}
+
+
+uint32_t Map::getHeight() const
+/*************************************************
+ * See speficiation in the header 
+ *************************************************/
+{
+  return map.info.height;
+}
+
+float Map::getResolution() const
+/*************************************************
+ * See speficiation in the header 
+ *************************************************/
+{
+   return map.info.resolution;
+}

@@ -4,6 +4,7 @@
 // ROS
 #include "nav_msgs/OccupancyGrid.h" 
 #include "nav_msgs/GridCells.h" 
+#include <ros/ros.h>
 
 // MY
 #include "../includes/global_definition.h" 
@@ -25,7 +26,7 @@ class MergeGroup
 class Frontier 
 {
   public:
-    Frontier(int8_t unknown_marker, int8_t occupied_above);
+    Frontier(std::shared_ptr<ros::NodeHandle> h);
     /****************************************************
      * Name: search                                                  
      * Description:  Locate frontier cell in the map
@@ -58,6 +59,18 @@ class Frontier
      * Errors: 
      ****************************************************/
     size_t calcCenter(const Map & map);
+
+
+    /****************************************************
+     * Name: findClusterFrontier                                                  
+     * Description: Find the closest frontier cell to a cluster center
+     * Parameters: 
+*                   const size_t cluster_index - TODO
+     * Return:  What does the function return ?
+     * Throws:  Which exception does it throw ?
+     * Errors:  Current errors
+     ****************************************************/
+    vec2 findClusterFrontier(const size_t cluster_index);
 
 
     ~Frontier(); 

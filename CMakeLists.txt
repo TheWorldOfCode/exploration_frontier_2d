@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
   actionlib_msgs
   move_base_msgs
+  pluginlib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -160,6 +161,13 @@ include_directories(includes)
 #   ${catkin_LIBRARIES}
 # )
 
+add_library(sensor_model src/sensor_lidar.cpp src/sensor_model_plugin.cpp src/frontier.cpp)
+add_library(navigation src/navigation_plugin.cpp src/navigation_move_base.cpp)
+target_link_libraries(navigation ${catkin_LIBRARIES})
+
+add_executable(exploration src/main.cpp src/frontier.cpp src/map.cpp src/vec2.cpp src/sensor.cpp src/robot.cpp src/exploration.cpp)
+target_link_libraries(exploration ${catkin_LIBRARIES})
+
 #############
 ## Install ##
 #############
@@ -215,5 +223,5 @@ include_directories(includes)
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(exploration src/main.cpp src/frontier.cpp src/map.cpp src/vec2.cpp src/sensor.cpp src/robot.cpp src/exploration.cpp)
-target_link_libraries(exploration ${catkin_LIBRARIES})
+
+

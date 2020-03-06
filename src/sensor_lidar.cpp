@@ -1,4 +1,4 @@
-#include "../includes/sensor.h"
+#include "../includes/sensor_lidar.h"
 #include "../includes/exception.h" 
 
 #include <vector>
@@ -6,35 +6,34 @@
 #include <cmath>
 
 
-std::vector<geometry_msgs::Point> SensorReading::getAllCells() const
-{
-  std::vector <geometry_msgs::Point> new_cells;
-  for(size_t i=0; i < cells.size() ; i++)
-  {
-    for( geometry_msgs::Point point : cells[i]) 
-        new_cells.push_back(point);
-  }
 
-  return new_cells;
-}  
-
-void SensorReading::append(std::vector<geometry_msgs::Point> & list) const
+exploration_sensor_model::LIDAR::LIDAR()
 /*************************************************
  * See speficiation in the header 
  *************************************************/
 {
-   for( std::vector<geometry_msgs::Point> p_list : cells) 
-   {
-     for( geometry_msgs::Point p : p_list) 
-         list.push_back(p); 
-   }
+  /* code */
 }
 
-Sensor::Sensor(const double sensor_range, const double sensor_span, const double angle_resolution) : range(sensor_range), span(sensor_span), angle_resolution(angle_resolution) 
+void exploration_sensor_model::LIDAR::initialize(std::shared_ptr<ros::NodeHandle> h)
 /*************************************************
  * See speficiation in the header 
  *************************************************/
 {
+
+  if(!h->getParam("sensor_range", range)) 
+    throw ParameterNotInServer("sensor_range"); 
+
+  if(!h->getParam("sensor_span", span ) ) 
+    throw ParameterNotInServer("sensor_span"); 
+
+  if(!h->getParam("angle_resolution", angle_resolution) ) 
+    angle_resolution = 0.5;
+
+  ROS_INFO("Param sensor_range %f"     , range);
+  ROS_INFO("Param sensor_span %f"      , span);
+  ROS_INFO("Param angle_resolution %f" , angle_resolution);
+
   std::string s = std::to_string(angle_resolution); 
 
   int decimals = 0;
@@ -51,12 +50,12 @@ Sensor::Sensor(const double sensor_range, const double sensor_span, const double
   
 }
 
-SensorReading Sensor::calcNumberOfUnknownBetweenAngle(const vec2 center, const double lower_angle_limit, const double upper_angle_limit, const Map & map, const Frontier * mark, const int display_size)
+exploration_sensor_model::SensorReading exploration_sensor_model::LIDAR::calcNumberOfUnknownBetweenAngle(const vec2 center, const double lower_angle_limit, const double upper_angle_limit, const Map & map, const Frontier * mark, const int display_size)
 /*************************************************
  * See speficiation in the header 
  *************************************************/
 {
-   SensorReading scan;
+   exploration_sensor_model::SensorReading scan;
 
    int count = 0;
    int sensor_range_cell = std::floor(range / map.map.info.resolution); 
@@ -69,16 +68,20 @@ SensorReading Sensor::calcNumberOfUnknownBetweenAngle(const vec2 center, const d
 
    std::vector<std::vector<geometry_msgs::Point>> point; 
 
+//   ROS_WARN("%f %i %f %f" , angle_resolution, sensor_range_cell, lower_limit, upper_limit); 
    std::vector<int> angle_count;
+
+   int tmp =0;
    for(double i = lower_limit; i < upper_limit; i+= angle_resolution)
    {
+     tmp++;
      std::vector<geometry_msgs::Point> p;
      const vec2 dir = vec2(std::cos(i * M_PI /((double) 180)) , std::sin(i * M_PI /((double) 180))); 
 
      int count2 = 0;
      for(int j = 1; j < sensor_range_cell + 1; j++)
      {
-
+       
        const vec2 point = center + dir * j;
        try
        {
@@ -108,6 +111,7 @@ SensorReading Sensor::calcNumberOfUnknownBetweenAngle(const vec2 center, const d
      count += count2;
    } 
 
+
    scan.total_count = count;
    scan.cells = point;
    scan.count_of_angle_resolution = Histogram<int>(angle_count, count);
@@ -119,7 +123,7 @@ SensorReading Sensor::calcNumberOfUnknownBetweenAngle(const vec2 center, const d
 
 }
 
-SensorReading Sensor::calcNumberOfUnknownCellTotal(const vec2 center, const Map & map, const Frontier * mark, const int display_size)
+exploration_sensor_model::SensorReading exploration_sensor_model::LIDAR::calcNumberOfUnknownCellTotal(const vec2 center, const Map & map, const Frontier * mark, const int display_size)
   /*************************************************
    * See speficiation in the header 
    *************************************************/
@@ -127,7 +131,7 @@ SensorReading Sensor::calcNumberOfUnknownCellTotal(const vec2 center, const Map 
   return calcNumberOfUnknownBetweenAngle(center, 0, 360, map, mark, display_size); 
 }
 
-SensorReading Sensor::calcNumberOfUnknownCellInDirection(const vec2 center, const double direction, const Map & map, const Frontier * mark, const int display_size)
+exploration_sensor_model::SensorReading exploration_sensor_model::LIDAR::calcNumberOfUnknownCellInDirection(const vec2 center, const double direction, const Map & map, const Frontier * mark, const int display_size)
   /*************************************************
    * See speficiation in the header 
    *************************************************/
@@ -135,7 +139,7 @@ SensorReading Sensor::calcNumberOfUnknownCellInDirection(const vec2 center, cons
   return calcNumberOfUnknownBetweenAngle(center, direction - span/2, direction + span/2, map, mark, display_size); 
 }
 
-bool Sensor::inRange(const vec2 center, const vec2 point)
+bool exploration_sensor_model::LIDAR::inRange(const vec2 center, const vec2 point)
   /*************************************************
    * See speficiation in the header 
    *************************************************/
@@ -143,7 +147,7 @@ bool Sensor::inRange(const vec2 center, const vec2 point)
   return (point - center).squaredLength()  <= (range * range);  
 }
 
-Sensor::~Sensor()
+exploration_sensor_model::LIDAR::~LIDAR()
   /*************************************************
    * See speficiation in the header 
    *************************************************/
@@ -151,7 +155,7 @@ Sensor::~Sensor()
   /* code */
 }
 
-std::vector<geometry_msgs::Point> Sensor::getSensorDataAroundIndexInReading2(const SensorReading & reading, const int index) const
+std::vector<geometry_msgs::Point> exploration_sensor_model::LIDAR::getSensorDataAroundIndexInReading2(const exploration_sensor_model::SensorReading & reading, const int index) const
   /*************************************************
    * See speficiation in the header 
    *************************************************/
@@ -178,7 +182,7 @@ std::vector<geometry_msgs::Point> Sensor::getSensorDataAroundIndexInReading2(con
   return points;
 }
 
-double Sensor::getForwardDirection(const SensorReading & reading) const
+double exploration_sensor_model::LIDAR::getForwardDirection(const exploration_sensor_model::SensorReading & reading) const
 /*************************************************
  * See speficiation in the header 
  *************************************************/
@@ -187,12 +191,12 @@ double Sensor::getForwardDirection(const SensorReading & reading) const
   return heading;
 }
 
-SensorReading Sensor::getSensorDataAroundIndexInReading(const SensorReading & reading, const int index) const
+exploration_sensor_model::SensorReading exploration_sensor_model::LIDAR::getSensorDataAroundIndexInReading(const exploration_sensor_model::SensorReading & reading, const int index) const
   /*************************************************
    * See speficiation in the header 
    *************************************************/
 {
-  SensorReading selected; 
+  exploration_sensor_model::SensorReading selected; 
   std::vector<std::vector<geometry_msgs::Point>> points;
   std::vector<int> data;
 
@@ -221,7 +225,7 @@ SensorReading Sensor::getSensorDataAroundIndexInReading(const SensorReading & re
     }
     catch (std::out_of_range e) 
     {
-      ROS_ERROR("Sensor::getSensorDataAroundIndexInReading %s", e.what()); 
+      ROS_ERROR("exploration_sensor_model::LIDAR::getSensorDataAroundIndexInReading %s", e.what()); 
     } 
   }
 
@@ -233,7 +237,7 @@ SensorReading Sensor::getSensorDataAroundIndexInReading(const SensorReading & re
 }
 
 
-double Sensor::roundToAngleResolution(const double angle, std::function<double(double)> round_method)
+double exploration_sensor_model::LIDAR::roundToAngleResolution(const double angle, std::function<double(double)> round_method)
   /*************************************************
    * See speficiation in the header 
    *************************************************/
@@ -241,7 +245,7 @@ double Sensor::roundToAngleResolution(const double angle, std::function<double(d
   return round_method(angle * round_factor) / round_factor;  
 }
 
-double Sensor::roundToAngleResolution(const double angle)
+double exploration_sensor_model::LIDAR::roundToAngleResolution(const double angle)
   /*************************************************
    * See speficiation in the header 
    *************************************************/

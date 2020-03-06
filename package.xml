@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>exploration_frontier_2d</name>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <description>The exploration_frontier_2d package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
@@ -58,6 +58,7 @@
   <build_depend>actionlib</build_depend> 
   <build_depend>actionlib_msgs</build_depend> 
   <build_depend>move_base_msgs</build_depend> 
+  <build_depend>pluginlib</build_depend> 
 
 
 
@@ -65,6 +66,7 @@
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->
-
+    <exploration_frontier_2d plugin="${prefix}/sensor_model.xml"/>
+    <exploration_frontier_2d plugin="${prefix}/navigation_plugin.xml"/>
   </export>
 </package>

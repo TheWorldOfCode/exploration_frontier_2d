@@ -1,0 +1,5 @@
+<library path="lib/libnavigation">
+  <class name="exploration_frontier_2d/exploration_navigation/NavigationMoveBase" type="exploration_navigation::NavigationMoveBase" base_class_type="exploration_navigation::NavigationBase">
+    <description>Navigation plugin for move_base packages</description> 
+  </class> 
+</library> 
