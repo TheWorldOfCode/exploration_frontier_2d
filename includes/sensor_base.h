@@ -17,8 +17,8 @@ namespace exploration_sensor_model
     int total_count;
     std::vector<std::vector<geometry_msgs::Point>> cells;
     Histogram<int>count_of_angle_resolution;
-    double upper_limit;
-    double lower_limit;
+    double upper_limit; // In degress
+    double lower_limit; // In degress
 
     std::vector<geometry_msgs::Point> getAllCells() const
     {

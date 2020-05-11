@@ -1,0 +1,24 @@
+
+<launch>
+  <arg name="scan_topic"  default="scan_filtered" />
+  <arg name="base_frame"  default="base_footprint"/>
+  <arg name="odom_frame"  default="odom"/>
+
+  <node pkg="slam_karto" type="slam_karto" name="slam_karto" output="screen">
+    <param name="base_frame" value="$(arg base_frame)"/>
+    <param name="odom_frame" value="$(arg odom_frame)"/>
+    <remap from="scan" to="$(arg scan_topic)"/>
+    <rosparam command="load" file="$(find exploration_frontier_2d)/param/karto_params.yaml"></rosparam> 
+    <!--param name="delta" value="0.1"/>
+    <param name="use_scan_matching" value="false"/>
+    <param name="link_scan_maximum_distance" value="6"/>
+    <param name="link_search_minimum_distance" value="6"/>
+    <param name="do_loop_closing" value="true"/>
+    <param name="loop_match_minimum_chain_size" value="10"/>
+    <param name="loop_match_maximum_variance_coarse" value="0.4"/>
+    <param name="loop_match_minimum_response_coarse" value="0.8"/>
+    <param name="loop_match_minimum_response_fine" value="0.8"/>
+    <param name="use_respone_expansion" value="true"/-->
+
+  </node>
+</launch>

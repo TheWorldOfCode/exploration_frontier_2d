@@ -99,7 +99,7 @@ exploration_sensor_model::SensorReading exploration_sensor_model::LIDAR::calcNum
        }
        catch (OutABound e )
        {
-         ROS_ERROR("sensor %s", e.what()); 
+         count2 += sensor_range_cell-j;
          break;
        }   
      }  
@@ -200,6 +200,7 @@ exploration_sensor_model::SensorReading exploration_sensor_model::LIDAR::getSens
   std::vector<std::vector<geometry_msgs::Point>> points;
   std::vector<int> data;
 
+  // This is wrong
   selected.lower_limit = index * angle_resolution + reading.lower_limit - span/2;
   selected.upper_limit = index * angle_resolution + reading.lower_limit + span/2;
 

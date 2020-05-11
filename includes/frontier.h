@@ -137,7 +137,7 @@ class Frontier
      * Errors:  
      ****************************************************/
     std::vector<vec2> getClusterCenter() const;
-    void addClusterCenter(const vec2 center); 
+    void addClusterCenter(const vec2 c, const geometry_msgs::Point point); 
 
     /****************************************************
      * Name: isFree                                                  

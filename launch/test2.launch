@@ -1,7 +1,8 @@
 <launch>
-  <node pkg="exploration_frontier_2d" type="exploration" name="exploration" launch-prefix="xterm -e gdb --args">
+  <node pkg="exploration_frontier_2d" type="debugger" name="debugger">
     <param name="sensor_range" type="double" value="6"></param> 
     <param name="sensor_span" type="double" value="270"></param> 
+    <param name="debug_filepath" type="string" value"~/debug"></param> 
   </node> 
-
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find exploration_frontier_2d)/rviz/test.rviz"></node> 
 </launch> 

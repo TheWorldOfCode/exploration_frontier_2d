@@ -39,4 +39,23 @@ struct ParameterNotInServer
   std::string _what;
 
 };
+
+struct CostInf : public std::exception
+{
+  virtual const char * what() const throw()
+  {
+    return "Infty cost at max cluster center";
+  }
+
+};
+
+
+struct NoGoal : public std::exception
+{
+  virtual const char * what() const throw()
+  {
+    return "No goal to move to";
+  }
+
+};
 #endif

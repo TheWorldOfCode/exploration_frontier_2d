@@ -165,8 +165,14 @@ add_library(sensor_model src/sensor_lidar.cpp src/sensor_model_plugin.cpp src/fr
 add_library(navigation src/navigation_plugin.cpp src/navigation_move_base.cpp)
 target_link_libraries(navigation ${catkin_LIBRARIES})
 
-add_executable(exploration src/main.cpp src/frontier.cpp src/map.cpp src/vec2.cpp src/sensor.cpp src/robot.cpp src/exploration.cpp)
+add_executable(exploration src/main.cpp src/frontier.cpp src/map.cpp src/vec2.cpp src/robot.cpp src/exploration.cpp)
 target_link_libraries(exploration ${catkin_LIBRARIES})
+
+
+add_executable(exploration_debugger src/debugger.cpp src/frontier.cpp src/map.cpp src/vec2.cpp src/robot.cpp src/exploration.cpp)
+target_link_libraries(exploration_debugger ${catkin_LIBRARIES})
+
+
 
 #############
 ## Install ##

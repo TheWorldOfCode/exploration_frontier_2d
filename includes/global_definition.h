@@ -4,6 +4,7 @@
 #include <string> 
 // Enable debugging 
 #define DEBUG 1
+#define TRACK 0
 
 namespace exploration 
 { 

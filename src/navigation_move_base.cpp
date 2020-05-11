@@ -44,6 +44,7 @@ void exploration_navigation::NavigationMoveBase::move(const geometry_msgs::Pose 
 
   goal.target_pose.pose.position = position.position;
   goal.target_pose.pose.orientation = position.orientation;
+  ROS_INFO("move_base goal position (%f %f %f) and orientation (%f %f %f %f)", position.position.x, position.position.y, position.position.z, position.orientation.x, position.orientation.y, position.orientation.z, position.orientation.w);
   action(MOVE);
 }
 
@@ -140,7 +141,6 @@ void exploration_navigation::NavigationMoveBase::action(const MoveAction ac)
       return;
     case MOVE:
       actionInterface.sendGoal(goal); 
-      actionInterface.waitForResult(); 
       return;
     case CANCEL_ALL:
       actionInterface.cancelAllGoals(); 

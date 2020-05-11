@@ -113,7 +113,6 @@ class Histogram
       std::ofstream f;
       f.open(filename); 
 
-
       if(f.is_open() ) 
       {
         for(int i=0; i < data.size() ; i++)

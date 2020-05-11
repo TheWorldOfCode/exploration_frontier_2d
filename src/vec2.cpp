@@ -20,6 +20,14 @@ double vec2::squaredLength( ) const
    return x*x + y*y;
 }
 
+double vec2::manhattanDistance() const
+/*************************************************
+ * See speficiation in the header 
+ *************************************************/
+{
+  return std::abs(x) + std::abs(y);
+}
+
 double vec2::getX() const
 {
   return x;

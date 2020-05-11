@@ -1,0 +1,7 @@
+<launch>
+  <arg name="map_file" default="$(find exploration_frontier_2d)/launch/includes/ground_truth.yaml"/>
+  <node name="ground_truth_map_server" pkg="map_server" type="map_server" args="$(arg map_file)">
+    <remap from="map" to="ground_truth_map"/> 
+  </node> 
+
+</launch> 

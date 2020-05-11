@@ -21,6 +21,7 @@ class vec2 {
      * Errors: 
      ****************************************************/
     double squaredLength() const;
+    double manhattanDistance() const;
 
     double getX() const;
     double getY() const;  
