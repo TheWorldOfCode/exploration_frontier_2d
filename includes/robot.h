@@ -9,6 +9,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
+#include <tf/transform_listener.h>
+#include <tf/tf.h>
 
 #include "../includes/navigation_base.h" 
 #include "../includes/map.h" 
@@ -21,7 +23,7 @@
 class Robot
 {
   public:
-    Robot(boost::shared_ptr<exploration_navigation::NavigationBase> nav);
+    Robot(boost::shared_ptr<exploration_navigation::NavigationBase> nav, std::shared_ptr<ros::NodeHandle> h);
 
     /****************************************************
      * Name: getLocalization                                                  
@@ -36,8 +38,7 @@ class Robot
 
     /****************************************************
      * Name: convVecToPoint                                                  
-     * Description: Convert a 2D vector to a Point
-     * Parameters: 
+     * Description: Convert a 2D vector to a Point * Parameters: 
 *                   const vec2 v - TODO
      * Return: A Point
      * Throws: 
@@ -81,7 +82,7 @@ class Robot
 
     /****************************************************
      * Name: moveToPosition                                                  
-     * Description: Calculate the point to move to
+     * Description: Calculate the point to move 
      * Parameters: 
      *              const geometry::Point p - TODO
 *                   const double heading - TODO
@@ -90,6 +91,18 @@ class Robot
      * Errors:
      ****************************************************/
     geometry_msgs::Pose moveToPosition(const geometry_msgs::Point p, const double heading) const;
+
+    /****************************************************
+     * Name: moveRelative                                                  
+     * Description: Calcutate a pose accoording to the robot Pose
+     * Parameters: 
+*                   const geometry_msgs::Point p - TODO
+*                   const double heading - TODO
+     * Return: A new Pose
+     * Throws: 
+     * Errors: 
+     ****************************************************/
+    geometry_msgs::Pose moveRelative(const geometry_msgs::Point p, const double heading) const;
 
     /****************************************************
      * Name: move                                                  
@@ -104,7 +117,52 @@ class Robot
      ****************************************************/
      void move(const geometry_msgs::Pose pose, const Map * map, const std::shared_ptr<Frontier> frontier);
 
+
+     /****************************************************
+      * Name: cancelGoal                                                  
+      * Description: Cancel the current goal
+      * Parameters: 
+      * Return:  
+      * Throws: 
+      * Errors:
+      ****************************************************/
+     void cancelGoal() const;
+
+     /****************************************************
+      * Name: isMoving                                                  
+      * Description: Check if the robot is moving 
+      * Parameters: 
+      * Return: True if it moves
+      * Throws: 
+      * Errors: 
+      ****************************************************/
+     bool isMoving() const;
+
+     /****************************************************
+      * Name: reachedGoal                                                  
+      * Description: Check if the robot has reached the goal
+      * Parameters: 
+      * Return: True if it has
+      * Throws: 
+      * Errors: 
+      ****************************************************/
+     bool reachedGoal();
+     
+
     ~Robot();  
+
+    /****************************************************
+     * Name: getLastGoodLocation                                                  
+     * Description:  What does the function do ?
+     * Parameters: 
+     * Return:  What does the function return ?
+     * Throws:  Which exception does it throw ?
+     * Errors:  Current errors
+     ****************************************************/
+    geometry_msgs::Pose getLastGoodLocation()
+    {
+      return last_good_location;
+    }
 
   private:
     boost::shared_ptr<exploration_navigation::NavigationBase> nav;
@@ -112,6 +170,11 @@ class Robot
     geometry_msgs::Pose robot_pose;
     double orientation;
 
+    geometry_msgs::Pose last_good_location;
+    geometry_msgs::Pose nav_pos;
+
+    tf::TransformListener listener;
+    std::string robot_base;
 };
 
 #endif

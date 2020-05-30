@@ -8,7 +8,6 @@
 #include "../includes/frontier.h" 
 #include "../includes/map.h" 
 #include "../includes/global_definition.h" 
-#include "../includes/sensor.h" 
 #include "../includes/robot.h" 
 #include "../includes/exploration.h" 
 #include "../includes/exception.h" 
@@ -19,13 +18,13 @@
 #include <memory>
 namespace exploration 
 { 
-  bool g_debug;
 
   std::string g_map_frame_id; // The frame id for the map  (used for navigation and gridcells) 
 
   int g_minimum_cluster_size;
 }
 
+enum State {MOVE, EXPLORE, WAIT, RECOVER};
 
 Map g_map;
 bool g_map_available = false;
@@ -46,7 +45,6 @@ int main(int argc, char **argv)
 {
 
 
-  // g_debug = true;
   /***********************************************
    * Setup ROS                                   *
    ***********************************************/
@@ -61,8 +59,6 @@ int main(int argc, char **argv)
  /***********************************************
   * Setup global variables                      *
   ***********************************************/ 
-  if(!nh->getParam("debug", exploration::g_debug)) 
-      exploration::g_debug = false;
 
   if(!nh->getParam("map_frame_id", exploration::g_map_frame_id)) 
        exploration::g_map_frame_id = "map" ;
@@ -70,15 +66,23 @@ int main(int argc, char **argv)
   if(!nh->getParam("minimum_cluster_size", exploration::g_minimum_cluster_size) ) 
     exploration::g_minimum_cluster_size = 5;
 
-  ROS_INFO("Param debug %s", exploration::g_debug ? "true" :  "false");
+  std::string nav_plug, sensor_plug;
+  if(!nh->getParam("navigation", nav_plug))
+    nav_plug = "exploration_navigation::NavigationBase";
+
+  if(!nh->getParam("sensor_model", sensor_plug))
+    sensor_plug = "exploration_sensor_model::SensorModelBase";
+
   ROS_INFO("Param map_frame_id %s", exploration::g_map_frame_id.c_str());
   ROS_INFO("Param minimum_cluster_size %i", exploration::g_minimum_cluster_size);
+  ROS_INFO("Param navigation %s", nav_plug.c_str());
+  ROS_INFO("Param sensor_model %s", sensor_plug.c_str());
 
   /***********************************************
    * Setup node                                  *
    ***********************************************/
-  pluginlib::ClassLoader<exploration_sensor_model::SensorModelBase> sensor_plug_loader("exploration_frontier_2d", "exploration_sensor_model::SensorModelBase"); 
-  pluginlib::ClassLoader<exploration_navigation::NavigationBase> navigation_plug_loader("exploration_frontier_2d", "exploration_navigation::NavigationBase"); 
+  pluginlib::ClassLoader<exploration_sensor_model::SensorModelBase> sensor_plug_loader("exploration_frontier_2d", sensor_plug); 
+  pluginlib::ClassLoader<exploration_navigation::NavigationBase> navigation_plug_loader("exploration_frontier_2d", nav_plug); 
 
 
   // Plug in 
@@ -101,7 +105,7 @@ int main(int argc, char **argv)
      * Initizering                                 *
      ***********************************************/
     frontier = std::make_shared<Frontier>(nh);
-    robot    = std::make_shared<Robot>(navigation) ;
+    robot    = std::make_shared<Robot>(navigation, nh) ;
     explorer = std::make_shared<Exploration>(sensor, frontier, robot, nh) ;
 
     sensor->initialize(nh); 
@@ -123,20 +127,12 @@ int main(int argc, char **argv)
 
   ros::Subscriber sub  = n.subscribe("map", 1000, getMap);
   ros::Subscriber sub2 = n.subscribe("odom", 1000, &Robot::getOdom, robot.get());
+  ros::Subscriber sub3 = n.subscribe("frontier/goals", 1, &Exploration::getPoseArray, explorer.get());
 #if DEBUG == 1
   ros::Publisher frontier_cells           = n.advertise<nav_msgs::GridCells>("frontier_cells" , 1000);
   ros::Publisher frontier_cluster_centers = n.advertise<nav_msgs::GridCells>("frontier_cluster_centers" , 1000);
   ros::Publisher frontier_target_center   = n.advertise<nav_msgs::GridCells>("frontier_target_center" , 1000);
   ros::Publisher frontier_sensor_range    = n.advertise<nav_msgs::GridCells>("frontier_sensor_range" , 1000);
-
-
-  std::vector<ros::Publisher> frontier_clusters;
-
-  for(int i = 0; i < 25; i++)  
-  { 
-    std::string s = "frontier_cluster_" + std::to_string((int) i);
-    frontier_clusters.push_back(n.advertise<nav_msgs::GridCells>(s.c_str() , 1000));
-  }
 
 #endif
 
@@ -154,45 +150,136 @@ int main(int argc, char **argv)
 
   bool save = false;
 
+  // Contain the goal position
   geometry_msgs::Pose goal;
+  // Contains the start position 
+  geometry_msgs::Point start;
+  vec2 start_vec;
+
+  // Used to save the point so the can be writed to target
   std::vector<geometry_msgs::Point> tmp;
 
+  // used to save the x and y map coordinates 
+  int x,y;
 
-  int state = 0;
+
+  // used to calculate recovering movements
+  geometry_msgs::Point p; 
+  int8_t recover = 0;
+
+  State current_state = EXPLORE;
+
   while(ros::ok())
   {
+    bool flag = true;
 
     if(g_map_available)
     {
-      switch(state) 
+      switch(current_state) 
       { 
-        case 1: 
+        case MOVE: 
+          // Publish the start and end position of the robot
+          start_vec = robot->getLocalization();
+          start.x = start_vec.getX();
+          start.y = start_vec.getY();
+          start.z = 0;
+
           tmp.clear(); 
           tmp.push_back(goal.position); 
+          tmp.push_back(explorer->exploration_goal());
+          tmp.push_back(start);
 
-          target.cell_width  = g_map.map.info.resolution;
-          target.cell_height = g_map.map.info.resolution;
+          target.cell_width  = g_map.getResolution();
+          target.cell_height = g_map.getResolution();
           target.cells       = tmp;
           target.header.seq++;
 
-          frontier_target_center.publish(target);
+          ROS_INFO("MOVE POSITION (%f %f)", goal.position.x, goal.position.y);
 
           robot->move(goal, &g_map, frontier);
 
-          if(frontier->getNumberOfCluster() == 0 ) 
-            state = 2;
+          current_state = WAIT;
+          break;
+        case WAIT:
+
+          if(!robot->isMoving())
+          {
+            if(robot->reachedGoal())
+            {
+              explorer->goalReached();
+              current_state = EXPLORE;
+            }
+            else 
+            {
+              if((robot->getLocalization() - start_vec).squaredLength() < 6)
+              {
+                ROS_WARN("Robot has not move far from start position, starting recovery");
+                current_state = RECOVER;
+              }
+              else
+                current_state = EXPLORE;
+
+            }
+          }
           else
-            state = 0;
+          {
+            g_map.translatePositionInToCell(goal.position, x,y);
+            if(frontier->isUnknown(g_map.getCellData(x,y)) || frontier->isOccupied(g_map.getCellData(x,y)))
+            {
+              ROS_INFO("Goal is now placed in unknown or occupied space");
+              robot->cancelGoal();
 
-          break;
-        case 2:
+              if(recover == 0)
+                current_state = EXPLORE;
+              else
+                current_state = RECOVER;
+            }
+          }
           break;
 
-        default:
+        case RECOVER:
+          current_state = MOVE;
+          if(recover == 0)
+          {
+            p.x = 1;
+            p.y = 0;
+          }
+          else if(recover == 1)
+          {
+            p.x = 1;
+            p.y = 0;
+          }
+          else if(recover == 2)
+          {
+            p.x = 0;
+            p.y = 1;
+          }
+          else if(recover == 3)
+          {
+            p.x = 0;
+            p.y = 1;
+          }
+          else
+            current_state = EXPLORE;
+
+          goal = robot->moveRelative(p,0);
+          recover++;
+          break;
+        case EXPLORE:
           try
           {
             goal = explorer->explore(g_map); 
           } 
+          catch(NoGoal ex)
+          {
+            ROS_WARN("%s", ex.what());
+            flag = false;
+          }
+          catch(CostInf ex)
+          {
+            ROS_WARN("%s", ex.what());
+            current_state = RECOVER;
+          }
           catch(NoFrontier ex) 
           {
             ROS_WARN("%s stopping", ex.what()  );
@@ -203,31 +290,25 @@ int main(int argc, char **argv)
             ROS_WARN("%s stopping", ex.what()  );
             goto EXITINGS;
           } 
-          state = 1;
 
 
-#if DEBUG == 1
-          for(size_t i = 0; i < frontier->getNumberOfCluster() ; i++ )
-          {
-            if(i > frontier_clusters.size()) 
-              break;
+          if(flag)
+            current_state = MOVE;
+          recover = 0;
 
-            frontier_clusters[i].publish(frontier->getCluster(g_map, i) );
-
-          } 
           frontier_cluster_centers.publish(frontier->getClusterCenterGridCells()); 
-#endif
-          frontier_cells.publish(frontier->getFrontierCells()); 
-          explored_area.cell_width = g_map.map.info.resolution;
-          explored_area.cell_height = g_map.map.info.resolution;
-          explored_area.cells = explorer->getSensorVising(); 
 
+          explored_area.cell_width = g_map.getResolution();
+          explored_area.cell_height = g_map.getResolution();
+          explored_area.cells = explorer->getSensorVising(); 
           explored_area.header.seq++;
-          frontier_sensor_range.publish(explored_area); 
       }
 
     }  
 
+    frontier_cells.publish(frontier->getFrontierCells()); 
+    frontier_sensor_range.publish(explored_area); 
+    frontier_target_center.publish(target);
 
     ros::spinOnce(); 
 

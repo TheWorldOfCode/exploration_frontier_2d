@@ -81,13 +81,11 @@ size_t Frontier::search(const Map & map)
 
   std::vector<geometry_msgs::Point> l_frontier_cells;
 
-  // if(g_debug) { 
   frontier_cells.cell_width            = map.getResolution();
   frontier_cells.cell_height           = map.getResolution();
   frontier_cluster_centers.cell_height = map.getResolution();
   frontier_cluster_centers.cell_width  = map.getResolution();
 
-  // }
 
   int x = 0, x_offset = 0,y_offset = 0, z = 0;
   geometry_msgs::Point cell_pos;
@@ -97,8 +95,6 @@ size_t Frontier::search(const Map & map)
 
     int8_t current_cell = map.getCellData(x); 
 
-    //    if(g_debug) 
-    geometry_msgs::Point cell_pos = map.translateCellInToPosition((x - (width * x_offset)), y_offset );
 
 
     /***********************************************
@@ -106,29 +102,29 @@ size_t Frontier::search(const Map & map)
      ***********************************************/
     if(isFree(current_cell))
     {
+      geometry_msgs::Point cell_pos = map.translateCellInToPosition((x - (width * x_offset)), y_offset );
+      int8_t left, right, up, down; 
+
+
       if(isUnknown(map.getCellData(x - 1)) ) 
       {
         vec_frontier_cells.push_back(vec2(x - (width * x_offset), y_offset ));
 
-        //   if(g_debug) 
         l_frontier_cells.push_back(cell_pos);
       } 
       else if (isUnknown(map.getCellData(x + 1)))
       {
         vec_frontier_cells.push_back(vec2(x - (width * x_offset), y_offset ));
-        //    if(g_debug) 
         l_frontier_cells.push_back(cell_pos);
       } 
-      else if (isUnknown(map.getCellData(x - width))) 
+      else if (int(x - width) > 0 && isUnknown(map.getCellData(x - width))) 
       {
         vec_frontier_cells.push_back(vec2(x - (width * x_offset), y_offset ));
-        //     if(g_debug) 
         l_frontier_cells.push_back(cell_pos);
       } 
-      else if (isUnknown(map.getCellData(x + width))) 
+      else if ( x + width < width*height && isUnknown(map.getCellData(x + width))) 
       {
         vec_frontier_cells.push_back(vec2(x - (width * x_offset), y_offset ));
-        //      if(g_debug) 
         l_frontier_cells.push_back(cell_pos);
       } 
     }  
@@ -144,10 +140,8 @@ size_t Frontier::search(const Map & map)
     } 
   }
 
-  //  if(g_debug) { 
   frontier_cells.cells = l_frontier_cells;
   frontier_cells.header.seq++;
-  // }
 
   return vec_frontier_cells.size();
 
@@ -379,12 +373,13 @@ std::vector<vec2> Frontier::getClusterCenter() const
   return vec_center;
 }
 
-void Frontier::addClusterCenter(const vec2 center)
+void Frontier::addClusterCenter(const vec2 c, const geometry_msgs::Point point)
   /*************************************************
    * See speficiation in the header 
    *************************************************/
 {
-  vec_center.push_back(center); 
+  vec_center.push_back(c); 
+  center.push_back(point);
 }
 
 // Private functions 

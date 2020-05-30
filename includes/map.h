@@ -109,6 +109,17 @@ struct Map
    ****************************************************/
   float getResolution() const;
 
+  /****************************************************
+   * Name: inSide                                                  
+   * Description
+   * Parameters: 
+*                   parameter - TODO
+   * Return:  What does the function return ?
+   * Throws:  Which exception does it throw ?
+   * Errors:  Current errors
+   ****************************************************/
+//  bool inSide(const int index);
+
 };
 
 
