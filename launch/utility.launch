@@ -1,11 +1,12 @@
 <launch>
 
-  <node pkg="exploration_frontier_2d" type="exploration" name="exploration_frontier_2d" launch-prefix="xterm -e gdb --args">
+  <node pkg="exploration_frontier_2d" type="exploration" name="exploration_frontier_2d">
     <param name="sensor_range" type="double" value="6"></param> 
     <param name="sensor_span" type="double" value="270"></param> 
-    <param name="cost_function_modifier" type="double" value="1"></param> 
+    <param name="cost_function_modifier" type="double" value="0"></param> 
     <param name="cost_lambda" type="double" value="1"></param> 
-    <param name="goal_function_modifier" type="double" value="1"></param> 
+    <param name="utility_function_modifier" type="double" value="1"></param> 
+    <param name="goal_function_modifier" type="double" value="0"></param> 
     <param name="goal_wait" type="bool" value="true"></param> 
   </node> 
 

@@ -110,7 +110,6 @@ class Exploration
 
 
     double cost_modifier;
-    double cost_lambda;
 
     double utility_modifier;
 

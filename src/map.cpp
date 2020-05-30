@@ -1,5 +1,6 @@
 #include "../includes/map.h" 
 #include "../includes/exception.h" 
+#include <ros/ros.h>
 
 
 Map::Map()

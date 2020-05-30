@@ -18,7 +18,6 @@
 #include <memory>
 namespace exploration 
 { 
-  bool g_debug;
 
   std::string g_map_frame_id; // The frame id for the map  (used for navigation and gridcells) 
 
@@ -59,8 +58,6 @@ int main(int argc, char **argv)
   /***********************************************
    * Setup global variables                      *
    ***********************************************/ 
-  if(!nh->getParam("debug", exploration::g_debug)) 
-    exploration::g_debug = false;
 
   std::string filepath_debug;
   if(!nh->getParam("debug_filepath", filepath_debug)) 
@@ -72,7 +69,6 @@ int main(int argc, char **argv)
   if(!nh->getParam("minimum_cluster_size", exploration::g_minimum_cluster_size) ) 
     exploration::g_minimum_cluster_size = 5;
 
-  ROS_INFO("Param debug %s", exploration::g_debug ? "true" :  "false");
   ROS_INFO("Param debug_filepath %s", filepath_debug.c_str()  ); 
   ROS_INFO("Param map_frame_id %s", exploration::g_map_frame_id.c_str());
   ROS_INFO("Param minimum_cluster_size %i", exploration::g_minimum_cluster_size);
@@ -103,7 +99,7 @@ int main(int argc, char **argv)
      * Initizering                                 *
      ***********************************************/
     frontier = std::make_shared<Frontier>(nh);
-    robot    = std::make_shared<Robot>(navigation) ;
+    robot    = std::make_shared<Robot>(navigation, nh) ;
     explorer = std::make_shared<Exploration>(sensor, frontier, robot, nh) ;
 
     sensor->initialize(nh); 

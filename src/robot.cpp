@@ -4,9 +4,14 @@
 #include <ros/ros.h>
 
 
-Robot::Robot(boost::shared_ptr<exploration_navigation::NavigationBase> nav) : nav(nav) 
+Robot::Robot(boost::shared_ptr<exploration_navigation::NavigationBase> nav, std::shared_ptr<ros::NodeHandle> h) : nav(nav) 
 {
-    /* code */
+  std::string tmp;
+  if(h->getParam("robot_base", tmp))
+    robot_base = tmp;
+  else
+    robot_base = "base_footprint";
+
 }  
 
 
@@ -45,13 +50,13 @@ void Robot::getOdom(nav_msgs::Odometry odom)
    * See speficiation in the header 
    *************************************************/
 {
-  if(odom.child_frame_id == "base_footprint")
+  if(odom.child_frame_id == robot_base)
   {
 
     tf::StampedTransform transform;
     
     try{
-      listener.lookupTransform("/map", "/base_footprint",
+      listener.lookupTransform("/"+ exploration::g_map_frame_id, "/" + robot_base,
           ros::Time(0), transform);
     }
     catch (tf::TransformException ex){

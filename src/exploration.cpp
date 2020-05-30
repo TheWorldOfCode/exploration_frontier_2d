@@ -17,9 +17,6 @@ Exploration::Exploration(const boost::shared_ptr<exploration_sensor_model::Senso
   if(!h->getParam("cost_function_modifier", cost_modifier))
     cost_modifier = 1; 
 
-  if(!h->getParam("cost_lambda", cost_lambda))
-      cost_lambda = 1;
-
   if(!h->getParam("utility_function_modifier", utility_modifier ) ) 
     utility_modifier = 1;
 
@@ -30,7 +27,6 @@ Exploration::Exploration(const boost::shared_ptr<exploration_sensor_model::Senso
     goal_wait = false;
 
   ROS_INFO("Param cost_function_modifier %f", cost_modifier);
-  ROS_INFO("Param cost_lambda %f", cost_lambda);
   ROS_INFO("Param utility_function_modifier %f", utility_modifier);
   ROS_INFO("Param goal_function_modifier %f", goal_modifier);
   ROS_INFO("Param goal_wait %s", goal_wait ? "true" : "false");
@@ -91,15 +87,11 @@ geometry_msgs::Pose Exploration::explore(const Map & map)
 
     t.position = center;
 
-    if(cost_modifier != 0)
-    {
-      t.cost = cost(map.translateCellInToPositionVec(center), t.heading);
+    
+    t.cost = cost(map.translateCellInToPositionVec(center), t.heading);
 
-      if(t.cost > cost_max && t.cost < std::numeric_limits<double>::infinity())
-        cost_max = t.cost;
-    }
-    else
-      t.cost = 0;
+    if(t.cost > cost_max && t.cost < std::numeric_limits<double>::infinity())
+      cost_max = t.cost;
 
     if(t.cost == std::numeric_limits<double>::infinity() )
       ROS_INFO("Cluster center %s, cost is infinity and the center is skipped", center.print().c_str());
@@ -163,13 +155,12 @@ geometry_msgs::Pose Exploration::explore(const Map & map)
 
     element.total = utility_modifier * element.reward - cost_modifier * element.cost + goal_modifier * element.goal;
 
-    ROS_INFO("%f %f %f", reward_max, cost_max, goal_max);
 
     ROS_INFO("Cluster center %s, Reward %f, Cost %f, Goal %f, Total %f",
         element.position.print().c_str(),
-        element.reward,
-        element.cost,
-        element.goal,
+        element.reward * utility_modifier,
+        element.cost * cost_modifier,
+        element.goal * goal_modifier,
         element.total
         );
   }
@@ -271,7 +262,7 @@ void Exploration::getPoseArray(geometry_msgs::PoseArray ar )
 {
   if(ar.header.frame_id == "map")
   {
-    ROS_INFO("New goal list received (size %i)", (int) ar.poses.size());
+    ROS_INFO("New goal list received (size %i), first goal is (%f, %f)", (int) ar.poses.size(), ar.poses[0].position.x, ar.poses[0].position.y);
     std::vector<geometry_msgs::Pose> p = ar.poses;
     goal_list = std::list<geometry_msgs::Pose>(p.begin(), p.end());
   }
@@ -326,7 +317,6 @@ double Exploration::cost(const vec2 center, const double heading) const
   {
     distance = math_extern::sum<double, geometry_msgs::PoseStamped>(0, p.size() - 1, 1, p.size() , p, math_extern::manhatten_distance);
 
-    distance = std::pow(distance, cost_lambda);
   }
   else
     distance = std::numeric_limits<double>::infinity(); 
@@ -397,12 +387,20 @@ bool Exploration::goalAvailable(const Map & map)
 {
 
   vec2 goal;
-  map.translatePositionInToCell(vec2(goal_list.front().position.x, goal_list.front().position.y), goal);
-  if(goal_list.size() == 0)
-    return false;
+  try
+  {
+    if(goal_list.size() == 0)
+      return false;
 
-  if(!frontier->isFree(map.getCellData(goal)))
+    map.translatePositionInToCell(vec2(goal_list.front().position.x, goal_list.front().position.y), goal);
+
+    ROS_WARN("GOAL %s", goal.print().c_str());
+    if(!frontier->isFree(map.getCellData(goal)))
+      return false;
+  } catch(OutABound a)
+  {
     return false;
+  }
 
   /*
      if(goal_list.size() != 1)

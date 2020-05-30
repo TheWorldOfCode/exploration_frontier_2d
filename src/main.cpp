@@ -18,7 +18,6 @@
 #include <memory>
 namespace exploration 
 { 
-  bool g_debug;
 
   std::string g_map_frame_id; // The frame id for the map  (used for navigation and gridcells) 
 
@@ -46,7 +45,6 @@ int main(int argc, char **argv)
 {
 
 
-  // g_debug = true;
   /***********************************************
    * Setup ROS                                   *
    ***********************************************/
@@ -61,8 +59,6 @@ int main(int argc, char **argv)
  /***********************************************
   * Setup global variables                      *
   ***********************************************/ 
-  if(!nh->getParam("debug", exploration::g_debug)) 
-      exploration::g_debug = false;
 
   if(!nh->getParam("map_frame_id", exploration::g_map_frame_id)) 
        exploration::g_map_frame_id = "map" ;
@@ -77,7 +73,6 @@ int main(int argc, char **argv)
   if(!nh->getParam("sensor_model", sensor_plug))
     sensor_plug = "exploration_sensor_model::SensorModelBase";
 
-  ROS_INFO("Param debug %s", exploration::g_debug ? "true" :  "false");
   ROS_INFO("Param map_frame_id %s", exploration::g_map_frame_id.c_str());
   ROS_INFO("Param minimum_cluster_size %i", exploration::g_minimum_cluster_size);
   ROS_INFO("Param navigation %s", nav_plug.c_str());
@@ -110,7 +105,7 @@ int main(int argc, char **argv)
      * Initizering                                 *
      ***********************************************/
     frontier = std::make_shared<Frontier>(nh);
-    robot    = std::make_shared<Robot>(navigation) ;
+    robot    = std::make_shared<Robot>(navigation, nh) ;
     explorer = std::make_shared<Exploration>(sensor, frontier, robot, nh) ;
 
     sensor->initialize(nh); 

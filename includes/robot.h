@@ -23,7 +23,7 @@
 class Robot
 {
   public:
-    Robot(boost::shared_ptr<exploration_navigation::NavigationBase> nav);
+    Robot(boost::shared_ptr<exploration_navigation::NavigationBase> nav, std::shared_ptr<ros::NodeHandle> h);
 
     /****************************************************
      * Name: getLocalization                                                  
@@ -38,8 +38,7 @@ class Robot
 
     /****************************************************
      * Name: convVecToPoint                                                  
-     * Description: Convert a 2D vector to a Point
-     * Parameters: 
+     * Description: Convert a 2D vector to a Point * Parameters: 
 *                   const vec2 v - TODO
      * Return: A Point
      * Throws: 
@@ -175,7 +174,7 @@ class Robot
     geometry_msgs::Pose nav_pos;
 
     tf::TransformListener listener;
-
+    std::string robot_base;
 };
 
 #endif
