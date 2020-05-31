@@ -24,7 +24,7 @@ Then for each center a theoretical scan with the cell as center is made with the
 ### Benefit function
 The benefit function used in the Cost-Utility-Goal is 
 
-![equation](http://www.sciweavers.org/tex2img.php?eq=B%28a%29%20%3D%20u%20%5Ccdot%20U%28a%29%20-%20c%20%5Ccdot%20C%28a%29%20%2B%20g%20%5Ccdot%20G%28a%2Cq%29&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
+![equation](https://latex.codecogs.com/gif.latex?B%28a%29%20%3D%20u%20%5Ccdot%20U%28a%29%20-%20c%20%5Ccdot%20C%28a%29%20&plus;%20g%20%5Ccdot%20G%28a%2Cq%29)
 
 Where U is the utility function, which gives the reward of travelling to cell a, and C is the cost function, which describes the cost of travelling to cell a. The G is the goal function, which return the reward of how close a cell a is to the goal q.  u, c and g is modifiers. 
 
